@@ -14,3 +14,4 @@ frontend/.env.local
 .DS_Store
 *.log
 notebook/.ipynb_checkpoints/
+.git-frontend-backup/

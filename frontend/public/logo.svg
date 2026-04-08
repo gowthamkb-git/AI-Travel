@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="face" x1="12" y1="20" x2="52" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#e0e7ff"/>
+      <stop offset="100%" stop-color="#c7d2fe"/>
+    </linearGradient>
+    <radialGradient id="glow-l" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#a5f3fc"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow-r" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#a5f3fc"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#6366f1" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="64" height="64" rx="16" fill="url(#bg)" filter="url(#shadow)"/>
+
+  <!-- Shine overlay -->
+  <rect width="64" height="32" rx="16" fill="white" fill-opacity="0.07"/>
+
+  <!-- Antenna -->
+  <rect x="30" y="6" width="4" height="8" rx="2" fill="#a5b4fc"/>
+  <circle cx="32" cy="5" r="3" fill="#c7d2fe"/>
+  <circle cx="32" cy="5" r="1.5" fill="#6366f1"/>
+
+  <!-- Robot head -->
+  <rect x="12" y="18" width="40" height="28" rx="8" fill="url(#face)"/>
+
+  <!-- Left eye glow -->
+  <circle cx="23" cy="32" r="6" fill="url(#glow-l)" opacity="0.6"/>
+  <!-- Left eye outer -->
+  <circle cx="23" cy="32" r="5" fill="#0f172a"/>
+  <!-- Left eye inner glow ring -->
+  <circle cx="23" cy="32" r="3.5" fill="#06b6d4" opacity="0.3"/>
+  <!-- Left eye pupil -->
+  <circle cx="23" cy="32" r="2.5" fill="#22d3ee"/>
+  <!-- Left eye highlight -->
+  <circle cx="24.2" cy="30.8" r="0.9" fill="white" opacity="0.9"/>
+
+  <!-- Right eye glow -->
+  <circle cx="41" cy="32" r="6" fill="url(#glow-r)" opacity="0.6"/>
+  <!-- Right eye outer -->
+  <circle cx="41" cy="32" r="5" fill="#0f172a"/>
+  <!-- Right eye inner glow ring -->
+  <circle cx="41" cy="32" r="3.5" fill="#06b6d4" opacity="0.3"/>
+  <!-- Right eye pupil -->
+  <circle cx="41" cy="32" r="2.5" fill="#22d3ee"/>
+  <!-- Right eye highlight -->
+  <circle cx="42.2" cy="30.8" r="0.9" fill="white" opacity="0.9"/>
+
+  <!-- Mouth / smile bar -->
+  <rect x="22" y="40" width="20" height="3" rx="1.5" fill="#a5b4fc" opacity="0.6"/>
+  <!-- Mouth dots -->
+  <circle cx="26" cy="41.5" r="1.2" fill="#6366f1"/>
+  <circle cx="32" cy="41.5" r="1.2" fill="#6366f1"/>
+  <circle cx="38" cy="41.5" r="1.2" fill="#6366f1"/>
+
+  <!-- Left ear -->
+  <rect x="7" y="26" width="5" height="10" rx="2.5" fill="#a5b4fc"/>
+  <rect x="8.5" y="29" width="2" height="4" rx="1" fill="#6366f1" opacity="0.5"/>
+
+  <!-- Right ear -->
+  <rect x="52" y="26" width="5" height="10" rx="2.5" fill="#a5b4fc"/>
+  <rect x="53.5" y="29" width="2" height="4" rx="1" fill="#6366f1" opacity="0.5"/>
+
+  <!-- Plane icon bottom right (branding) -->
+  <path d="M46 52 L56 47 L58 50 L50 54 L51 58 L48 57 L47 54 Z" fill="white" fill-opacity="0.35"/>
+</svg>
