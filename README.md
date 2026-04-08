@@ -11,12 +11,12 @@ Full-stack AI travel planning app — FastAPI + LangGraph backend, Next.js front
 
 ### Backend
 ```bash
-cd backend
+cd ~/ai-trip-planner-v2/backend
 python -m venv venv
-venv\Scripts\activate
+source venv/Scripts/activate
 pip install -r requirements.txt
-# Fill in .env with your API keys
 uvicorn main:app --reload
+
 ```
 
 ### Frontend

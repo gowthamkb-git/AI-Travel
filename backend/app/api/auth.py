@@ -2,10 +2,13 @@ from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from app.db.database import get_db
 from app.models.user import UserCreate, UserLogin, TokenResponse, UserPublic
 from app.utils.auth import hash_password, verify_password, create_access_token, get_current_user
-from bson import ObjectId
 import base64
 
 router = APIRouter()
+
+
+def _normalize_email(email: str) -> str:
+    return email.strip().lower()
 
 
 def _to_public(user: dict) -> UserPublic:
@@ -24,12 +27,14 @@ def _to_public(user: dict) -> UserPublic:
 @router.post("/signup", response_model=TokenResponse)
 async def signup(body: UserCreate):
     db = get_db()
-    if await db["users"].find_one({"email": body.email}):
+    normalized_email = _normalize_email(body.email)
+    existing_user = await db["users"].find_one({"email": normalized_email})
+    if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     user_doc = {
         "name": body.name,
-        "email": body.email,
+        "email": normalized_email,
         "hashed_password": hash_password(body.password),
         "plan": "free",
         "usage_limit": 50,
@@ -46,7 +51,8 @@ async def signup(body: UserCreate):
 @router.post("/login", response_model=TokenResponse)
 async def login(body: UserLogin):
     db = get_db()
-    user = await db["users"].find_one({"email": body.email})
+    normalized_email = _normalize_email(body.email)
+    user = await db["users"].find_one({"email": normalized_email})
     if not user or not verify_password(body.password, user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 

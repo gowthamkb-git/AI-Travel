@@ -1,5 +1,6 @@
 import os
 import bcrypt
+from bson import ObjectId
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status

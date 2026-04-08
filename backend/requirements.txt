@@ -16,3 +16,4 @@ motor
 pymongo
 bcrypt
 python-jose[cryptography]
+python-multipart

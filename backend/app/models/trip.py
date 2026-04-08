@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 class TripSave(BaseModel):
     query: str
     response: str
+    trip_id: Optional[str] = None
 
 
 class TripInDB(BaseModel):

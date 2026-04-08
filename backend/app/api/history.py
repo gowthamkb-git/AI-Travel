@@ -12,14 +12,35 @@ router = APIRouter()
 @router.post("/save", response_model=TripPublic)
 async def save_trip(body: TripSave, current_user=Depends(get_current_user)):
     db = get_db()
-    doc = {
-        "user_id": str(current_user["_id"]),
-        "query": body.query,
-        "response": body.response,
-        "created_at": datetime.utcnow(),
-    }
-    result = await db["trips"].insert_one(doc)
-    doc["_id"] = result.inserted_id
+    if body.trip_id:
+        existing = await db["trips"].find_one({"_id": ObjectId(body.trip_id), "user_id": str(current_user["_id"])})
+        if existing:
+            await db["trips"].update_one(
+                {"_id": existing["_id"]},
+                {"$set": {"query": body.query, "response": body.response, "created_at": datetime.utcnow()}},
+            )
+            existing["query"] = body.query
+            existing["response"] = body.response
+            existing["created_at"] = datetime.utcnow()
+            doc = existing
+        else:
+            doc = {
+                "user_id": str(current_user["_id"]),
+                "query": body.query,
+                "response": body.response,
+                "created_at": datetime.utcnow(),
+            }
+            result = await db["trips"].insert_one(doc)
+            doc["_id"] = result.inserted_id
+    else:
+        doc = {
+            "user_id": str(current_user["_id"]),
+            "query": body.query,
+            "response": body.response,
+            "created_at": datetime.utcnow(),
+        }
+        result = await db["trips"].insert_one(doc)
+        doc["_id"] = result.inserted_id
     return TripPublic(id=str(doc["_id"]), query=doc["query"], response=doc["response"], created_at=doc["created_at"])
 
 

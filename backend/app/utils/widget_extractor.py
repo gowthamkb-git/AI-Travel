@@ -12,6 +12,9 @@ LOCATION_CURRENCY_MAP = {
     "bengaluru": ("INR", "₹", 83.0),
     "kerala": ("INR", "₹", 83.0),
     "rajasthan": ("INR", "₹", 83.0),
+    "karnataka": ("INR", "₹", 83.0),
+    "shivamogga": ("INR", "₹", 83.0),
+    "shimoga": ("INR", "₹", 83.0),
     "uk": ("GBP", "£", 0.79),
     "london": ("GBP", "£", 0.79),
     "france": ("EUR", "€", 0.92),
@@ -93,7 +96,7 @@ def _extract_weather(text: str, location: str | None) -> WeatherData | None:
     }
     sl = search_text.lower()
     for key, val in condition_map.items():
-        if key in sl:
+        if re.search(rf"\b{re.escape(key)}\b", sl):
             condition = val
             break
 

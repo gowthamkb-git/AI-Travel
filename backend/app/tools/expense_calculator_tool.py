@@ -1,6 +1,7 @@
 from app.utils.expense_calculator import Calculator
 from langchain.tools import tool
 from typing import List, Union
+import re
 
 
 class CalculatorTool:
@@ -11,9 +12,21 @@ class CalculatorTool:
     def _setup_tools(self) -> List:
         def to_float(v) -> float:
             try:
-                return float(str(v).strip()) if str(v).strip() != '' else 0.0
+                cleaned = re.sub(r"[^\d.\-]", "", str(v).strip())
+                return float(cleaned) if cleaned != "" else 0.0
             except (TypeError, ValueError):
                 return 0.0
+
+        def parse_costs(value: Union[List[float], str]) -> List[float]:
+            if isinstance(value, list):
+                return [to_float(item) for item in value]
+
+            text = str(value).strip()
+            if not text:
+                return []
+
+            matches = re.findall(r"-?\d[\d,]*(?:\.\d+)?", text)
+            return [to_float(match) for match in matches]
 
         @tool
         def estimate_total_hotel_cost(price_per_night: Union[float, str], total_days: Union[float, str]) -> float:
@@ -21,9 +34,9 @@ class CalculatorTool:
             return self.calculator.multiply(to_float(price_per_night), to_float(total_days))
 
         @tool
-        def calculate_total_expense(costs: List[float]) -> float:
-            """Calculate total expense of the trip given a list of costs"""
-            return self.calculator.calculate_total(*[to_float(c) for c in costs])
+        def calculate_total_expense(costs: Union[List[float], str]) -> float:
+            """Calculate total expense of the trip given a list of costs or a stringified list of amounts"""
+            return self.calculator.calculate_total(*parse_costs(costs))
 
         @tool
         def calculate_daily_expense_budget(total_cost: Union[float, str], days: Union[int, str]) -> float:

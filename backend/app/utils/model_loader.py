@@ -1,36 +1,18 @@
-from typing import Literal, Optional, Any
-from pydantic import BaseModel, Field
-from app.utils.config_loader import load_config
 from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
-class ModelLoader(BaseModel):
-    model_provider: Literal["groq", "openai", "gemini"] = "gemini"
-    config: Optional[dict] = Field(default=None, exclude=True)
+class ModelLoader:
+    def __init__(self, model_provider: str = "groq"):
+        self.model_provider = model_provider
 
-    def model_post_init(self, __context: Any) -> None:
-        self.config = load_config()
-
-    class Config:
-        arbitrary_types_allowed = True
-
-    def load_llm(self):
+    def load_llm(self, model_name: str | None = None, temperature: float = 0.7):
         if self.model_provider == "groq":
-            model_name = self.config["llm"]["groq"]["model_name"]
-            return ChatGroq(model=model_name, api_key=os.getenv("GROQ_API_KEY"))
-        elif self.model_provider == "openai":
-            model_name = self.config["llm"]["openai"]["model_name"]
-            return ChatOpenAI(model_name=model_name, api_key=os.getenv("OPENAI_API_KEY"))
-        elif self.model_provider == "gemini":
-            model_name = self.config["llm"]["gemini"]["model_name"]
-            return ChatGoogleGenerativeAI(
-                model=model_name,
-                google_api_key=os.getenv("GEMINI_API_KEY"),
+            return ChatGroq(
+                model=model_name or "llama-3.1-8b-instant",
+                temperature=temperature,
+                groq_api_key=os.getenv("GROQ_API_KEY"),
             )
+
+        # fallback (optional)
         raise ValueError(f"Unsupported model provider: {self.model_provider}")
