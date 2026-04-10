@@ -14,6 +14,28 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildLabelIcon(name: string) {
+  return L.divIcon({
+    className: "place-label-icon",
+    html: `<div style="transform:translate(18px,-12px);background:rgba(2,8,23,0.92);color:#e5eefc;border:1px solid rgba(255,255,255,0.12);padding:3px 8px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,0.28);">${escapeHtml(name)}</div>`,
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+  });
+}
+
+function shouldRenderLabel(marker: PlaceMarker) {
+  return !marker.category || marker.category === "attractions";
+}
+
 interface Props {
   center: Coords;
   markers: PlaceMarker[];
@@ -102,7 +124,7 @@ export default function LeafletMap({
                 )}
                 <button
                   type="button"
-                  onClick={() => openDirectionsInGoogleMaps(marker)}
+                  onClick={() => openDirectionsInGoogleMaps(marker, "driving", currentCoords ?? null)}
                   className="mt-3 rounded-full border border-cyan-300/40 bg-cyan-300/10 px-2.5 py-1 text-xs text-cyan-700 transition hover:border-cyan-400/50"
                 >
                   Open route in Google Maps
@@ -110,6 +132,14 @@ export default function LeafletMap({
               </div>
             </Popup>
           </Marker>
+          {shouldRenderLabel(marker) && (
+            <Marker
+              position={[marker.coords.lat, marker.coords.lng]}
+              icon={buildLabelIcon(marker.name)}
+              interactive={false}
+              keyboard={false}
+            />
+          )}
         </Fragment>
       ))}
     </MapContainer>

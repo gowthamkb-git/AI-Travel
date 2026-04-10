@@ -56,13 +56,16 @@ async def place_suggestions(
         resolved = resolve_destination(question, location_hint=location) if question or location else None
         resolved_location = format_resolved_location(resolved) if resolved else location
         if not resolved:
-            return {"location": resolved_location, "places": search_place_names(resolved_location)}
+            return {"location": resolved_location, "places": search_place_names(resolved_location, question=question)}
 
         suggestions = get_place_suggestions(
             float(resolved["lat"]),
             float(resolved["lon"]),
             resolved_location,
+            question=question,
         )
+        if not suggestions:
+            return {"location": resolved_location, "places": search_place_names(resolved_location, question=question)}
         return {"location": resolved_location, "places": suggestions}
     except Exception as e:
         logger.error(f"Place suggestions error: {e}")

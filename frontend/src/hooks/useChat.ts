@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Message } from "@/types";
-import { planTrip, restoreTrip, saveTrip } from "@/services/api";
+import { Message, PlaceMarker } from "@/types";
+import { getPlaceSuggestions, planTrip, restoreTrip, saveTrip } from "@/services/api";
 import { useTripContext } from "@/lib/TripContext";
 import { useAuth } from "@/lib/AuthContext";
 import { detectDestinationFromQuery, restoreTripWidgets } from "@/lib/historyTripRestore";
@@ -11,6 +11,7 @@ import { applyLocationMemory } from "@/lib/chatMemory";
 const FREE_LIMIT = 2;
 const INITIAL_MESSAGE: Message = { role: "assistant", content: "Hi! Tell me where you want to travel" };
 const TRIP_QUERY_PATTERN = /\b(plan|trip|travel|visit|itinerary|days?\b|from\b|to\b|budget\b|hotel\b)\b/i;
+const PLACE_REFRESH_PATTERN = /\b(place|places|must visit|tourist|attraction|sightseeing|hotel|hotels|stay|restaurant|restaurants|food|cafe)\b/i;
 
 function requestBrowserCoords(): Promise<{ lat: number; lng: number } | null> {
   if (typeof window === "undefined" || !navigator.geolocation) {
@@ -30,7 +31,83 @@ function requestBrowserCoords(): Promise<{ lat: number; lng: number } | null> {
   });
 }
 
+function toPlaceMarkers(
+  places: Array<{
+    name: string;
+    category?: string | null;
+    lat?: number | null;
+    lng?: number | null;
+    rating?: number | null;
+    address?: string | null;
+    placeId?: string | null;
+    googleMapsUrl?: string | null;
+  }>
+): PlaceMarker[] {
+  return places
+    .filter((place) => typeof place.lat === "number" && typeof place.lng === "number")
+    .map((place) => ({
+      name: place.name,
+      coords: { lat: place.lat as number, lng: place.lng as number },
+      category: place.category ?? null,
+      rating: place.rating ?? null,
+      address: place.address ?? null,
+      placeId: place.placeId ?? null,
+      googleMapsUrl: place.googleMapsUrl ?? null,
+    }));
+}
+
+function mergePlaceMarkers(existing: PlaceMarker[], incoming: PlaceMarker[]) {
+  const merged: PlaceMarker[] = [];
+  const seen = new Set<string>();
+
+  for (const place of [...incoming, ...existing]) {
+    const key = `${place.name.toLowerCase()}|${place.coords.lat.toFixed(4)}|${place.coords.lng.toFixed(4)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(place);
+  }
+
+  return merged;
+}
+
+async function fetchMarkerBundles(location: string, primaryQuestion: string) {
+  const prompts = [
+    "must visit tourist attractions there",
+    "top rated attractions there",
+    "best activities there",
+    primaryQuestion,
+    "top rated hotels there",
+    "top rated restaurants there",
+  ];
+
+  const settledResponses = await Promise.allSettled(
+    prompts.map((prompt) => getPlaceSuggestions(location, prompt))
+  );
+
+  const responses = settledResponses.map((result) =>
+    result.status === "fulfilled"
+      ? result.value
+      : {
+          location,
+          places: [] as Array<{
+            name: string;
+            lat?: number | null;
+            lng?: number | null;
+            rating?: number | null;
+            address?: string | null;
+            placeId?: string | null;
+            googleMapsUrl?: string | null;
+          }>,
+        }
+  );
+
+  return responses.reduce<PlaceMarker[]>((allMarkers, response) => {
+    return mergePlaceMarkers(allMarkers, toPlaceMarkers(response.places ?? []));
+  }, []);
+}
+
 export function useChat() {
+  const RETRY_MESSAGE = "Model is busy, retrying...";
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [loading, setLoading] = useState(false);
   const [showFreeModal, setShowFreeModal] = useState(false);
@@ -43,6 +120,7 @@ export function useChat() {
     currentLocation,
     setCurrentLocation,
     setLastResponse,
+    placeMarkers,
     setPlaceMarkers,
     setSelectedPlace,
     currentCoords,
@@ -108,6 +186,7 @@ export function useChat() {
     }
 
     const normalizedQuestion = applyLocationMemory(text, currentLocation);
+    const explicitDestination = detectDestinationFromQuery(normalizedQuestion);
     const updatedMessages = [...messages, { role: "user" as const, content: text }];
     setMessages(updatedMessages);
     setLoading(true);
@@ -130,11 +209,21 @@ export function useChat() {
           current_location: resolvedCurrentCoords,
           location_context: currentLocation,
         },
-        token
+        token,
+        () => {
+          setMessages((prev) =>
+            prev[prev.length - 1]?.content === RETRY_MESSAGE
+              ? prev
+              : [...prev, { role: "assistant", content: RETRY_MESSAGE }]
+          );
+        }
       );
       const answer = response.answer;
 
-      setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
+      setMessages((prev) => {
+        const trimmed = prev.filter((message) => message.content !== RETRY_MESSAGE);
+        return [...trimmed, { role: "assistant", content: answer }];
+      });
       setLastResponse(answer);
 
       if (!token) incFreeCount();
@@ -168,13 +257,38 @@ export function useChat() {
         }
       }
 
-      const nextLocation =
-        response.destination ??
-        response.widgets?.weather?.location ??
-        detectDestinationFromQuery(normalizedQuestion) ??
-        currentLocation;
+      const nextLocation = explicitDestination
+        ? (response.destination ?? response.widgets?.weather?.location ?? explicitDestination)
+        : (currentLocation ?? response.destination ?? response.widgets?.weather?.location ?? null);
       setCurrentLocation(nextLocation);
-      setDestinationCoords(response.destination_coords ?? null);
+
+      const shouldAcceptDestinationCoords =
+        !currentLocation ||
+        Boolean(explicitDestination) ||
+        (response.destination && response.destination === currentLocation);
+      if (shouldAcceptDestinationCoords) {
+        setDestinationCoords(response.destination_coords ?? null);
+      }
+
+      const shouldRefreshPlaces = Boolean(nextLocation) && (
+        placeMarkers.length === 0 ||
+        nextLocation !== currentLocation ||
+        PLACE_REFRESH_PATTERN.test(normalizedQuestion)
+      );
+      if (shouldRefreshPlaces && nextLocation) {
+        try {
+          const markers =
+            nextLocation !== currentLocation || placeMarkers.length === 0
+              ? await fetchMarkerBundles(nextLocation, normalizedQuestion)
+              : toPlaceMarkers((await getPlaceSuggestions(nextLocation, normalizedQuestion)).places ?? []);
+          if (markers.length) {
+            setPlaceMarkers((current) => mergePlaceMarkers(current, markers));
+            setSelectedPlace((current) => current ?? markers[0] ?? null);
+          }
+        } catch {
+          // Keep the current map/place state if suggestion refresh fails.
+        }
+      }
     } catch (err: unknown) {
       let message = "Something went wrong. Please try again.";
       if (err instanceof Error) {
@@ -184,7 +298,10 @@ export function useChat() {
           message = err.message;
         }
       }
-      setMessages((prev) => [...prev, { role: "assistant", content: message }]);
+      setMessages((prev) => {
+        const trimmed = prev.filter((item) => item.content !== RETRY_MESSAGE);
+        return [...trimmed, { role: "assistant", content: message }];
+      });
     } finally {
       setLoading(false);
     }
@@ -250,8 +367,21 @@ export function useChat() {
 
       setLastResponse(enriched.answer);
       setWidgets(enriched.widgets ?? restored.widgets);
-      setCurrentLocation(enriched.destination ?? restored.destination);
+      const restoredLocation = enriched.destination ?? restored.destination;
+      setCurrentLocation(restoredLocation);
       setDestinationCoords(enriched.destination_coords ?? null);
+
+      if (restoredLocation) {
+        try {
+          const markers = await fetchMarkerBundles(restoredLocation, query);
+          if (markers.length) {
+            setPlaceMarkers((current) => mergePlaceMarkers(current, markers));
+            setSelectedPlace((current) => current ?? markers[0] ?? null);
+          }
+        } catch {
+          // Preserve any existing markers when restore-time suggestions fail.
+        }
+      }
     } catch {
       setDestinationCoords(null);
     }

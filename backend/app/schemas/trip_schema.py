@@ -68,7 +68,7 @@ class WidgetData(BaseModel):
 
 class TripRequest(BaseModel):
     question: str
-    model_provider: str = "groq"
+    model_provider: str = "huggingface"
     history: List[ChatMessage] = Field(default_factory=list)
     current_location: Optional[Coordinates] = None
     location_context: Optional[str] = None

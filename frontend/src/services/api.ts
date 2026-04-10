@@ -3,6 +3,13 @@ import { PlaceMarker } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const AUTH_TIMEOUT_MS = 10000;
+const TRIP_TIMEOUT_MS = 90000;
+const DEFAULT_MODEL_PROVIDER = process.env.NEXT_PUBLIC_MODEL_PROVIDER || "groq";
+
+type RetryNotice = {
+  attempt: number;
+  delayMs: number;
+};
 
 function authHeaders(token?: string | null) {
   return {
@@ -17,6 +24,14 @@ async function handleResponse(res: Response) {
     throw new Error(err.detail || err.error || "Request failed");
   }
   return res.json();
+}
+
+function isRateLimitError(error: unknown) {
+  return error instanceof Error && /429|rate[_ -]?limit|too many requests/i.test(error.message);
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = AUTH_TIMEOUT_MS) {
@@ -42,28 +57,72 @@ async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}
 }
 
 // Trip
-export async function planTrip(request: TripRequest, token?: string | null): Promise<TripResponse> {
-  const res = await fetch(`${BASE_URL}/api/trip/plan`, {
-    method: "POST",
-    headers: authHeaders(token),
-    body: JSON.stringify(request),
-  });
-  return handleResponse(res);
+export async function planTrip(
+  request: TripRequest,
+  token?: string | null,
+  onRetry?: (notice: RetryNotice) => void
+): Promise<TripResponse> {
+  const nextRequest = { ...request, model_provider: request.model_provider || DEFAULT_MODEL_PROVIDER };
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await fetchWithTimeout(`${BASE_URL}/api/trip/plan`, {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify(nextRequest),
+      }, TRIP_TIMEOUT_MS);
+      return await handleResponse(res);
+    } catch (error) {
+      lastError = error;
+      if (!isRateLimitError(error) || attempt === 2) {
+        throw error;
+      }
+
+      const delayMs = 1000 * (attempt + 1);
+      onRetry?.({ attempt: attempt + 1, delayMs });
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Request failed");
 }
 
-export async function restoreTrip(request: TripRequest, token?: string | null): Promise<TripResponse> {
-  const res = await fetch(`${BASE_URL}/api/trip/restore`, {
-    method: "POST",
-    headers: authHeaders(token),
-    body: JSON.stringify(request),
-  });
-  return handleResponse(res);
+export async function restoreTrip(
+  request: TripRequest,
+  token?: string | null,
+  onRetry?: (notice: RetryNotice) => void
+): Promise<TripResponse> {
+  const nextRequest = { ...request, model_provider: request.model_provider || DEFAULT_MODEL_PROVIDER };
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await fetchWithTimeout(`${BASE_URL}/api/trip/restore`, {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify(nextRequest),
+      }, TRIP_TIMEOUT_MS);
+      return await handleResponse(res);
+    } catch (error) {
+      lastError = error;
+      if (!isRateLimitError(error) || attempt === 2) {
+        throw error;
+      }
+
+      const delayMs = 1000 * (attempt + 1);
+      onRetry?.({ attempt: attempt + 1, delayMs });
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Request failed");
 }
 
 export async function getPlaceSuggestions(
   location: string,
   question?: string
-): Promise<{ location: string; places: Array<Partial<PlaceMarker> & { name: string; lat?: number | null; lng?: number | null; rating?: number | null; address?: string | null }> }> {
+): Promise<{ location: string; places: Array<Partial<PlaceMarker> & { name: string; lat?: number | null; lng?: number | null; rating?: number | null; address?: string | null; category?: string | null }> }> {
   const params = new URLSearchParams({ location });
   if (question) params.set("question", question);
   const res = await fetch(`${BASE_URL}/api/trip/place-suggestions?${params.toString()}`);
@@ -72,6 +131,7 @@ export async function getPlaceSuggestions(
     location: data.location,
     places: (data.places ?? []).map((place: Partial<PlaceMarker> & { name: string; place_id?: string | null; google_maps_url?: string | null; lat?: number | null; lng?: number | null }) => ({
       ...place,
+      category: place.category ?? null,
       placeId: place.placeId ?? place.place_id ?? null,
       googleMapsUrl: place.googleMapsUrl ?? place.google_maps_url ?? null,
       lat: place.lat ?? place.coords?.lat ?? null,

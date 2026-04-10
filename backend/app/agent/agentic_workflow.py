@@ -27,15 +27,33 @@ class GraphBuilder:
     def __init__(self, model_provider: str = "groq"):
         loader = ModelLoader(model_provider=model_provider)
         self.general_llm = loader.load_llm(
-            model_name="llama-3.3-70b-versatile",
+            model_name=(
+                "llama-3.3-70b-versatile"
+                if loader.model_provider == "groq"
+                else "openai/gpt-oss-120b"
+                if loader.model_provider == "huggingface"
+                else "gpt-4o-mini"
+            ),
             temperature=0.4,
         )
         self.calculation_llm = loader.load_llm(
-            model_name="meta-llama/llama-4-scout-17b-16e-instruct",
+            model_name=(
+                "meta-llama/llama-4-scout-17b-16e-instruct"
+                if loader.model_provider == "groq"
+                else "openai/gpt-oss-120b"
+                if loader.model_provider == "huggingface"
+                else "gpt-4o-mini"
+            ),
             temperature=0.2,
         )
         self.prompt_guard_llm = loader.load_llm(
-            model_name="meta-llama/llama-prompt-guard-2-22m",
+            model_name=(
+                "meta-llama/llama-prompt-guard-2-22m"
+                if loader.model_provider == "groq"
+                else "openai/gpt-oss-120b"
+                if loader.model_provider == "huggingface"
+                else "gpt-4o-mini"
+            ),
             temperature=0.0,
         )
         self.system_prompt = SYSTEM_PROMPT

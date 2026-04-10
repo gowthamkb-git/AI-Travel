@@ -4,6 +4,9 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
+import PlaceInlineLink from "@/components/places/PlaceInlineLink";
+import { useTripContext } from "@/lib/TripContext";
+import { findPlaceByLinkId, injectListedPlaceQueryLinks, injectPlaceLinks } from "@/lib/placeText";
 
 const markdownComponents: Components = {
   h1: ({ children }) => (
@@ -57,6 +60,40 @@ export default function MessageBubble({
   role: string;
   content: string;
 }) {
+  const { placeMarkers } = useTripContext();
+  const renderedContent = role === "assistant"
+    ? injectListedPlaceQueryLinks(injectPlaceLinks(content, placeMarkers))
+    : content;
+
+  const components: Components = {
+    ...markdownComponents,
+    a: ({ href, children }) => {
+      if (href?.startsWith("place://")) {
+        const linkId = href.replace("place://", "");
+        const place = findPlaceByLinkId(placeMarkers, linkId);
+        if (!place) {
+          return <span>{children}</span>;
+        }
+        return <PlaceInlineLink place={place}>{children}</PlaceInlineLink>;
+      }
+
+      if (href?.startsWith("place-query://")) {
+        const placeQuery = decodeURIComponent(href.replace("place-query://", ""));
+        return <PlaceInlineLink placeQuery={placeQuery}>{children}</PlaceInlineLink>;
+      }
+
+      return (
+        href && /^https?:\/\//i.test(href)
+          ? (
+            <a href={href} className="text-indigo-300 underline underline-offset-4" target="_blank" rel="noreferrer">
+              {children}
+            </a>
+          )
+          : <span>{children}</span>
+      );
+    },
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -71,7 +108,7 @@ export default function MessageBubble({
             <span className="text-xs text-gray-500 font-medium uppercase tracking-widest">Trip Planner</span>
           </div>
           <div className="text-gray-200">
-            <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
+            <ReactMarkdown components={components}>{renderedContent}</ReactMarkdown>
           </div>
         </div>
       ) : (

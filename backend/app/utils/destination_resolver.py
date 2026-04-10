@@ -24,8 +24,11 @@ STOP_WORDS = {
     "my", "current", "location", "place", "trip", "travel", "vacation", "holiday",
     "plan", "itinerary", "days", "day", "night", "nights", "under", "below",
     "within", "budget", "cheap", "luxury", "family", "solo", "couple",
-    "can", "could", "would", "please", "make",
+    "can", "could", "would", "please", "make", "plane", "stay", "staying",
+    "hotel", "hotels", "airport", "check", "checkin", "check-in",
 }
+
+BUDGET_LIKE_PATTERN = re.compile(r"^\d[\d,]*(?:\.\d+)?\s*(?:k|l|lakh)?$", re.IGNORECASE)
 
 LOCATION_ALIASES = {
     "chikkamagalore": "Chikkamagaluru",
@@ -34,7 +37,20 @@ LOCATION_ALIASES = {
     "bangalore": "Bengaluru",
     "bombay": "Mumbai",
     "madras": "Chennai",
+    "mangalore": "Mangaluru, Karnataka, India",
+    "mangalore karnataka": "Mangaluru, Karnataka, India",
+    "mangalore, karnataka": "Mangaluru, Karnataka, India",
     "goa": "Goa, India",
+    "jaipur": "Jaipur, Rajasthan, India",
+    "jaipur india": "Jaipur, Rajasthan, India",
+    "jaipur, india": "Jaipur, Rajasthan, India",
+    "jaipur rajasthan": "Jaipur, Rajasthan, India",
+    "jaipur, rajasthan": "Jaipur, Rajasthan, India",
+    "mysore": "Mysuru, Karnataka, India",
+    "mysore india": "Mysuru, Karnataka, India",
+    "mysore, india": "Mysuru, Karnataka, India",
+    "mysore karnataka": "Mysuru, Karnataka, India",
+    "mysore, karnataka": "Mysuru, Karnataka, India",
     "panaji": "Panaji, Goa, India",
     "goa, panaji": "Panaji, Goa, India",
     "goa panaji": "Panaji, Goa, India",
@@ -45,7 +61,10 @@ LOCATION_ALIASES = {
 
 LOCATION_PRESETS = {
     "goa, india": {"name": "Goa", "state": "Goa", "county": None, "country": "IN", "lat": 15.2993, "lon": 74.1240, "display_name": "Goa, India"},
+    "jaipur, rajasthan, india": {"name": "Jaipur", "state": "Rajasthan", "county": None, "country": "IN", "lat": 26.9124, "lon": 75.7873, "display_name": "Jaipur, Rajasthan, India"},
+    "mysuru, karnataka, india": {"name": "Mysuru", "state": "Karnataka", "county": None, "country": "IN", "lat": 12.2958, "lon": 76.6394, "display_name": "Mysuru, Karnataka, India"},
     "panaji, goa, india": {"name": "Panaji", "state": "Goa", "county": None, "country": "IN", "lat": 15.4909, "lon": 73.8278, "display_name": "Panaji, Goa, India"},
+    "mangaluru, karnataka, india": {"name": "Mangaluru", "state": "Karnataka", "county": None, "country": "IN", "lat": 12.9141, "lon": 74.8560, "display_name": "Mangaluru, Karnataka, India"},
     "bali, indonesia": {"name": "Bali", "state": "Bali", "county": None, "country": "ID", "lat": -8.4095, "lon": 115.1889, "display_name": "Bali, Indonesia"},
 }
 
@@ -76,7 +95,8 @@ def _clean_candidate(value: str) -> str:
     value = re.sub(r"\b(?:under|below|within)\s+[^\n.;]+", "", value, flags=re.IGNORECASE)
     value = re.split(r"\bfrom\b", value, maxsplit=1, flags=re.IGNORECASE)[0]
     value = re.sub(r"\b(?:trip|travel|vacation|holiday|itinerary)\b", "", value, flags=re.IGNORECASE)
-    value = re.sub(r"\b(?:can|could|would|please|make|create|build|help)\b", "", value, flags=re.IGNORECASE)
+    value = re.sub(r"\b(?:can|could|would|please|make|create|build|help|plan|plane|stay|staying|hotel|hotels|airport|check|checkin|check-in)\b", "", value, flags=re.IGNORECASE)
+    value = re.sub(r"\bto\s+\d[\d,]*(?:\.\d+)?\s*(?:k|l|lakh)?\b", "", value, flags=re.IGNORECASE)
     for phrase in STOP_PHRASES:
         value = re.split(re.escape(phrase), value, maxsplit=1, flags=re.IGNORECASE)[0]
     value = re.sub(r"\s+", " ", value).strip(" .!?\n\t:-")
@@ -93,6 +113,7 @@ def extract_candidate_locations(text: str) -> list[str]:
     patterns = [
         r"\b(?:trip|travel|vacation|holiday|visit|itinerary|plan)\s+to\s+([^.!?;]+?)(?:\s+for\b|\s+from\b|\s+with\b|\s+under\b|$)",
         r"\bplan\s+for\s+([^.!?;]+?)(?:\s+for\b|\s+from\b|\s+with\b|\s+under\b|$)",
+        r"\b(?:plan|plane)\s+trip\s+for\s+([^.!?;]+?)(?:\s+for\b|\s+from\b|\s+with\b|\s+under\b|$)",
         r"\b(?:make|plan|create|build|organize|arrange)\b.*?\btrip\s+to\s+([^.!?;]+?)(?:\s+for\b|\s+from\b|\s+with\b|\s+under\b|$)",
         r"\b(?:make|plan|create|build|organize|arrange)\b.*?\b([A-Z][A-Za-z.'\-]+(?:\s+[A-Z][A-Za-z.'\-]+){0,4})\s+trip\b",
         r"\bvisit\s+([^.!?;]+?)(?:\s+for\b|\s+from\b|\s+with\b|$)",
@@ -138,6 +159,7 @@ def extract_candidate_locations(text: str) -> list[str]:
             or lowered in STOP_WORDS
             or len(candidate) < 3
             or re.fullmatch(r"\d+", candidate)
+            or BUDGET_LIKE_PATTERN.fullmatch(candidate)
         ):
             continue
         seen.add(lowered)

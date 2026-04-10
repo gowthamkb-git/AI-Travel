@@ -7,6 +7,14 @@ function extractSummaryValue(response: string, index: number): string | null {
   return match?.[1]?.trim() ?? null;
 }
 
+function isLikelyDestination(value: string) {
+  const candidate = value.trim();
+  if (!candidate) return false;
+  if (/^\d[\d,]*(?:\.\d+)?\s*(k|l|lakh)?$/i.test(candidate)) return false;
+  if (/\b(days?|nights?|budget)\b/i.test(candidate)) return false;
+  return true;
+}
+
 export function detectDestinationFromQuery(query: string): string | null {
   const patterns = [
     /\btrip to\s+([^.!?]+?)(?:\s+for\b|\s+from\b|\s+under\b|$)/i,
@@ -19,7 +27,10 @@ export function detectDestinationFromQuery(query: string): string | null {
   for (const pattern of patterns) {
     const match = query.match(pattern);
     if (match?.[1]) {
-      return match[1].trim().replace(/\s+/g, " ");
+      const candidate = match[1].trim().replace(/\s+/g, " ");
+      if (isLikelyDestination(candidate)) {
+        return candidate;
+      }
     }
   }
 

@@ -76,7 +76,8 @@ def _normalize_amount(value: str, suffix: str | None) -> float:
     return amount
 
 
-def _extract_amount(line: str, currency_code: str, currency_symbol: str | None) -> Optional[float]:
+def _extract_line_amounts(line: str, currency_code: str, currency_symbol: str | None) -> list[float]:
+    amounts: list[float] = []
     for match in AMOUNT_PATTERN.finditer(line):
         symbol = match.group("symbol")
         code = (match.group("code") or "").upper()
@@ -85,15 +86,29 @@ def _extract_amount(line: str, currency_code: str, currency_symbol: str | None) 
         if not value:
             continue
         if code and code == currency_code:
-            return _normalize_amount(value, suffix)
+            amounts.append(_normalize_amount(value, suffix))
+            continue
         if symbol and currency_symbol and symbol == currency_symbol:
-            return _normalize_amount(value, suffix)
+            amounts.append(_normalize_amount(value, suffix))
+            continue
         if symbol and not currency_symbol:
-            return _normalize_amount(value, suffix)
+            amounts.append(_normalize_amount(value, suffix))
+    return amounts
 
-    plain_match = re.search(r"\b(\d[\d,]*(?:\.\d+)?)\s*(k|K|lakh|L)?\b", line)
-    if plain_match:
-        return _normalize_amount(plain_match.group(1), plain_match.group(2))
+
+def _extract_amount(line: str, currency_code: str, currency_symbol: str | None) -> Optional[float]:
+    amounts = _extract_line_amounts(line, currency_code, currency_symbol)
+    if amounts:
+        return min(amounts)
+
+    if re.search(
+        r"\b(total|transport|transportation|accommodation|hotel|food|activities|per day|daily)\b",
+        line,
+        re.IGNORECASE,
+    ):
+        plain_match = re.search(r"\b(\d[\d,]*(?:\.\d+)?)\s*(k|K|lakh|L)?\b", line)
+        if plain_match:
+            return _normalize_amount(plain_match.group(1), plain_match.group(2))
     return None
 
 

@@ -18,7 +18,7 @@ export default function Home() {
   }, [loading, messages]);
 
   return (
-    <main className="h-screen w-full flex bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#020617] text-white">
+    <main className="h-screen w-full flex bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#020617] text-white overflow-hidden">
       {/* Sidebar */}
       <div className="w-64 border-r border-white/10 backdrop-blur-xl shrink-0">
         <Sidebar onNewTrip={resetChat} onLoadTrip={loadTrip} />
@@ -27,7 +27,7 @@ export default function Home() {
       {/* Chat */}
       <div className="flex-1 flex flex-col backdrop-blur-xl min-w-0">
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+          <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
             {messages.map((msg, i) => (
               <MessageBubble key={i} role={msg.role} content={msg.content} />
             ))}
@@ -61,7 +61,7 @@ export default function Home() {
       </div>
 
       {/* Widgets */}
-      <div className="w-80 border-l border-white/10 backdrop-blur-xl shrink-0">
+      <div className="w-[44rem] max-w-[46vw] border-l border-white/10 backdrop-blur-xl shrink-0 min-w-[30rem]">
         <WidgetsPanel />
       </div>
 

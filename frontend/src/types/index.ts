@@ -65,6 +65,7 @@ export interface Coords {
 export interface PlaceMarker {
   name: string;
   coords: Coords;
+  category?: string | null;
   distanceKm?: number | null;
   rating?: number | null;
   address?: string | null;

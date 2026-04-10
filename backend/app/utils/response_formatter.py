@@ -34,10 +34,24 @@ def _extract_locations(text: str) -> List[str]:
         "relaxation and leisure",
         "departure",
     }
+    excluded_line_fragments = (
+        "meal at a",
+        "snacks and drinks",
+        "approx.",
+        "per person",
+        "cost breakdown",
+        "budget tips",
+        "transportation",
+        "accommodation",
+        "food and drink",
+    )
 
     for line in lines:
         line = line.strip()
         if not line:
+            continue
+        lowered_line = line.lower()
+        if any(fragment in lowered_line for fragment in excluded_line_fragments):
             continue
         if line.startswith("|"):
             parts = [part.strip() for part in line.strip("|").split("|")]

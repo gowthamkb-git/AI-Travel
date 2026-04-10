@@ -27,7 +27,6 @@ export default function WeatherCard() {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-
     document.body.style.overflow = open ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
@@ -282,21 +281,23 @@ export default function WeatherCard() {
         onClick={() => {
           if (weather) setOpen(true);
         }}
-        className="w-full rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 to-blue-500/10 p-4 text-left shadow-lg transition hover:scale-[1.02]"
+        className="w-full rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 px-4 py-3 text-left shadow-lg transition hover:border-indigo-400/30 hover:shadow-indigo-500/10"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-sm text-gray-400">Weather</h2>
-          {conditionIcon(weather?.condition ?? null)}
+          {conditionIcon(weather?.condition ?? null, 16)}
         </div>
 
         {weather ? (
-          <div className="mt-3 space-y-2">
-            <p className="text-2xl font-semibold text-white">{weather.temp ?? "--"}</p>
-            <p className="text-sm text-gray-300">
-              {weather.location ?? "Destination"}
-              {weather.condition ? ` · ${weather.condition}` : ""}
-            </p>
-            <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xl font-semibold leading-none text-white">{weather.temp ?? "--"}</p>
+              <p className="mt-1 line-clamp-1 text-xs text-gray-300">
+                {weather.location ?? "Destination"}
+                {weather.condition ? ` · ${weather.condition}` : ""}
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
               {weather.season && (
                 <span
                   className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -311,9 +312,9 @@ export default function WeatherCard() {
             </div>
           </div>
         ) : (
-          <div className="mt-3 space-y-1">
-            <p className="text-2xl font-semibold text-gray-600">--</p>
-            <p className="text-sm text-gray-600">Ask about a destination</p>
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <p className="text-xl font-semibold text-gray-600">--</p>
+            <p className="text-xs text-gray-600">Ask about a destination</p>
           </div>
         )}
       </button>
